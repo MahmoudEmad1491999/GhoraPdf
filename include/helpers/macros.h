@@ -27,6 +27,10 @@
     fprintf(stderr, err_message);\
     exit(-1);\
 }
+#define FAIL_WITH_MESSAGE(err_message) \
+    fprintf(stderr, err_message);\
+    exit(-1);
+
 #endif
 
 

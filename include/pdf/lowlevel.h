@@ -1,3 +1,5 @@
+#ifndef LOWLEVEL_H
+#define LOWLEVEL_H
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
@@ -14,7 +16,9 @@ enum PDFVALUETYPE {
     PDFREAL,
     PDFNUMBER,
     PDFBOOLEAN,
-    PDFNULL
+    PDFREF,
+    PDFNULL,
+
 };
 
 /**
@@ -108,6 +112,18 @@ typedef struct
     uint8_t* stream;
     int32_t len;
 } PdfStream;
+
+/**
+ * this structure represent a reference to an indirect object, e.g. /Length 6 0 R
+ * referneced here mean read.
+ * @generationNumber        Generation Number of the referneced indirect object.
+ * @id                      identifier Number of the referenced indirect object.
+ */
+typedef struct
+{
+    uint64_t generationNumber;
+    uint64_t id;
+}PdfRef;
 
 /**
  * Purpose:     make a new PdfName object on the heap and initialize it by copying.
@@ -307,3 +323,6 @@ void pdfStreamSet(PdfStream* pdfStream, int index, uint8_t value);
  *                      1) If ele is null noting happen.
  */
 void freePdfValue(void* ptr, enum PDFVALUETYPE pdfValueType);
+
+PdfRef* makePdfRef(uint64_t generationNumber, uint64_t id);
+#endif

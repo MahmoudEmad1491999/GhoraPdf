@@ -222,6 +222,20 @@ void freePdfStream(PdfStream *pdfStream) {
     }
 }
 
+PdfRef* makePdfRef(uint64_t generationNumber, uint64_t id)
+{
+    // allocate space for the object.
+    PdfRef* ptr = (PdfRef*) malloc(sizeof(PdfRef)) ;
+    // check if the allocation succeded.
+    FAIL_IF_NULL(ptr, "failed to allocate memory for the underlying array of uint8_t.\n");
+    // set the Generation Number.
+    ptr->generationNumber = generationNumber;
+    // set the identifer Number.
+    ptr->id = id;
+    return ptr;
+}
+
+
 PdfObjVal pdfArrayAtGet(PdfArray* pdfArray, int index)
 {
     // check if the given array pointer is null.
@@ -375,7 +389,7 @@ void freePdfValue(void* ele, enum PDFVALUETYPE pdfValueType)
     if (NULL != ele) {
         // if it's a simple pdf type "non-composite or aggregate" just freeing it is enough.
         if (pdfValueType == PDFNUMBER || pdfValueType == PDFBOOLEAN ||
-            pdfValueType == PDFREAL || pdfValueType == PDFNULL) {
+            pdfValueType == PDFREAL || pdfValueType == PDFNULL || pdfValueType == PDFREF) {
             free(ele);
         } else if (pdfValueType == PDFSTRING) {
             freePdfString(ele);
@@ -394,3 +408,5 @@ void freePdfValue(void* ele, enum PDFVALUETYPE pdfValueType)
         }
     }
 }
+
+

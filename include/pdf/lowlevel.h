@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-enum {PDF_TRUE, PDF_FALSE};
+enum {PDF_FALSE = 0,PDF_TRUE};
 
 enum PDFVALUETYPE {
     PDFSTRING,
@@ -19,11 +19,11 @@ enum PDFVALUETYPE {
 
 /**
  * This structure is used to represent a pdf value and it's type in  a single structure.
- * @ele             is a pointer to the element itself.
- * @type            is the type of the element/value.
+ * @ptr             is a pointer to one of the possible pdfvalues [PdfString, PdfName, PdfNumber, ...,etc]
+ * @type            is the type of pdf value pointed by ele.
  */
 typedef struct {
-    void* ele;
+    const void * const ptr;         //const pointer to const void.
     enum PDFVALUETYPE type;
 } PdfObjVal;
 
@@ -61,7 +61,7 @@ typedef struct {
 } PdfString;
 
 /**
- * this structure store the string characters as null termainted string.
+ * this structure store the string characters as null termainted string and represent pdf Name object/value.
  * @NT_str          the null termainated array of characters.
  */
 typedef struct {
@@ -71,15 +71,14 @@ typedef struct {
 /**
  * represent dynamically allocated array structure the holds dynamically allocated pdf object types.
  * @arr             represent array of pointer to dynamically allocated pdfvalues.
- * @cap             the capacity of this array.
- * @size            the actual occupied size by the currently present elements in the array.
- * @values_types    due to the nature or pdf array construct it holds elements of differnet type, so this list
+ * @size            represent the maximum number of element this array can hold.
+ * @values_types    due to the nature or pdf array construct, it holds elements of differnet type, so this list
  *                  actually record the types of each individual element 
  */
  
 typedef struct {
     void** arr;
-    int32_t cap, size;
+    int32_t size;
     int32_t* values_types;
 } PdfArray;
 
@@ -89,172 +88,222 @@ typedef struct {
  * the pdf value type Name we only need to store the types of the value structure.
  * @keys            pointer to the array of pointers to pdf names.
  * @values          pointer to an array of pointers to the values.
- * @valuetypes      array of types representing the types of each individual value stored.
+ * @size            represent the maximum number of key/value pair this dictionary can hold.
+ * @valuetypes      due to the nature of the pdf dictionary object the keys is always of type pdf Names, but the values
+ *                  can take all possible types.
  */
     PdfName** keys;
     void** values;
-    int32_t cap,size;
+    int32_t size;
     int* values_types;
 } PdfDictionary;
 
 /**
- * stream is a sequence of bytes usually representing either text or graphics command.
- * @stream          array of unsigned bytes.
+ * A stream is a pdf object/value type that represent sequence of bytes usually representing either text or graphics command.
+ * @stream          is an array to uint8_t bytes representing the actuall data in the stream
  * @len             the actual length of the array.
  */
 typedef struct 
 {
     uint8_t* stream;
-    int32_t size;
+    int32_t len;
 } PdfStream;
 
 /**
- * this function will return the address of a newly created pdfName on the heap that is 
- * independent even from the null terminated string of characters,
- * which means it's the responsiblity of the client to free the allocated copied characters
- * after being done with the whole object
- * NOTE:
- *      freePdfName() must be used to free the object or the underlaying character array
- *      will causei memory leak
+ * Purpose:     make a new PdfName object on the heap and initialize it by copying.
+ * @str         the string of null terminated characters to copy.
+ * @return      pointer to the created object.
+ * Note:        free using the freePdfName() funciton
  */
 PdfName* makePdfName(const char* str);
 
 /**
  * this function shold be called to free object created by makePdfName
- * to free the underlaying array of characters also.
- * @pdfName         address of the object to be freed.
+ * to free the underlaying array of characters aswell.
+ * @pdfName         pointer of the object to be freed.
 */
 void freePdfName(PdfName* pdfName);
 
 /**
- * this function will return the address of a newly created pdfString on the heap that is 
- * independent even from the str characters, which means it's the responsiblity of the client
- * to free the given characters if it was dynamically allocated.
- * NOTE:
- *      freePdfString() must be used to free the object or the underlaying character array
- *      will causei memory leak
- */
+ * Purpose:     make a new PdfString object on the heap and initialize it by copying.
+ * @str         the string of null termainted characters to copy from.
+ * @return      pointer to the created object.
+  */
 PdfString* makePdfString(const char* str);
 
 /** 
- * this function shold be called to free object created by makePdfString 
- * to free the underlaying array of characters also.
- * @pdfName         address of the object to be freed.
+ * Purpose:         free the object pointed by pdfString and the underlying string.
+ * @pdfName         pointer of the object to be freed.
  */
 void freePdfString(PdfString* pdfString);
 
 /**
- * this function is the sole point you should used to create pdf array values.
- * @initialCap          is the intialCapacity of the Array.
- * NOTE:
- *      freePdfArray() must be used to free the Array or the underlaying elements will cause 
- *      a memory leak.
+ * Purpose:             create a new pdfArray object on the heap and allocate the space for the
+ *                      elements.
+ * @size                the maximus number of elements the array can hold.
+ * @return              pointer to the create pdfArray object.
  */
-PdfArray* makePdfArray(int32_t initialCap);
+PdfArray* makePdfArray(int32_t size);
 
 
-/* this function shold be called to free object created by makePdfArray 
- * to free the underlaying elements aswell.
- * @pdfArray        address of the PdfArray to be removed
+/* Purpose:             this function shold be called to free object created by makePdfArray 
+ *                      to free the underlaying elements aswell.
+ * @pdfArray            pointer to the object to be freed.
 */
 void freePdfArray(PdfArray* pdfArray);
 
 /**
- * this function is the sole point you should used to create pdf dictionary values.
- * @initialCap          is the intialCapacity of the Array.
- * NOTE:
- *      freePdfDictionary() must be used to free the Dictionary or the underlaying keys/values will cause 
- *      a memory leak.
+ * Purpose:             create a new pdfDictionary object on the heap and allocate space for the underlying 
+ *                      key/value pairs given their number
+ * @size                the maximum number of key/value pairs the dictionary can hold.
+ * @return              pointer the newly created PdfDictionary object.
  */
-PdfDictionary* makePdfDictionary(int32_t initialCap);
+PdfDictionary* makePdfDictionary(int32_t size);
 
 
-/** this function shold be called to free object created by makePdfDictionary to free
- * the underalying keys and values and types array of 
- * elements using the correct functions.
- * @pdfDictionary       address of the dictinoary to be freed with the underlaying composing elements.
+/** Purpose:            this function shold be called to free object created by makePdfDictionary and to free
+ *                      the underalying keys and values and types array of object using the correct functions.
+ * @pdfDictionary       pointer the dictinoary to be freed with the underlaying composing elements.
  */
 void freePdfDictionary(PdfDictionary* pdfDictionary);
 
 /**
- * this function is the sole point you should used to create pdf stream values.
- * @initialCap          is the intialCapacity of the Array.
- * NOTE:
- *      freePdfStream() must be used to free the stream or the underlaying character array will cause 
- *      a memory leak.
+ * Purpose:             create a new PdfStream object on the heap and allocate space for the underlying 
+ *                      array of bytes given the length.
+ * @len                 the length of the underlying array.
  */
-PdfStream* makePdfStream(int32_t initialCap);
+PdfStream* makePdfStream(int32_t len);
 
-// this function shold be called to free object created by makePdfStream 
-// to free the underlaying uint8_t array aswell.
-// @pdfStream address ot the PdfStream object to be freed with underlaying objects aswell.
+/**
+ * Purpose:             this function shold be called to free object created by makePdfStream 
+ *                      to free the underlaying uint8_t array aswell.
+ * @pdfStream           pointer to the PdfStream object to be freed with underlaying array aswell.
+ */
 void freePdfStream(PdfStream* pdfStream);
 
 /**
- * to make it more like a normal array the this function is used as the subscription operator 
- * for the PdfArray type 
- * @pdfArray        the Array in question.
- * @index           the index of the element requested.
- * NOTE:
- *                  this function does not actually return an element but another structure so that
- *                  it can also return the type of the element but it return the address of the element 
- *                  and the type in a form of structure so don't funking free the element it's not your job
- *                  it's the job of the array freeing function.
+ * Purpose:             to make it more like a normal array the this function is used as the subscription operator 
+ *                      for the PdfArray type.
+ * @pdfArray            the Array to be queried.
+ * @index               the index of the element requested.
+ * @return              the PdfObjVal that holds the pointer to the element and the type, both as memebers.
+ * 
+ * Failure senarios:    
+ *                      1) if the given array is null it will close the app.
+ *                      2) if the index is out of bounds is will close the app.
+ *                      
+ * Notes:               1) if the index in question has a null as an element it will return 
+ *                         Null as the Pointer to the element and PDFNULL as the type regardless of the value of pdfArray->values_types[index]
+ *                      2) this function return the address of the element as a memeber to PdfObjVal so don't free it.
  */
 PdfObjVal pdfArrayAtGet(PdfArray* pdfArray, int32_t index);
 
 /**
- * to make it more like a normal array the this function is used as the subscription operator 
- * for the PdfArray type 
- * @pdfArray        the Array in question.
- * @index           the index of the element requested.
- * @pdfObjVal       the element and the type to store as the specified index as requested.
- * NOTE:
- *                  this function does not actually set the element to a value it free the existing value if present 
- *                  and set the address of the specified index to the address given in the form of a structure which also hold the type.
+ * Purpose:             to make it more like a normal array the this function is used as the subscription operator 
+ *                      for the PdfArray type.
+ *
+ * @pdfArray            the Array to be queried.
+ * @index               the index of the element requested.
+ * @pdfObjVal           the element and the type to store at the specified index as requested.
+ * 
+ * Failure Senarios:    
+ *                      1) if the given array is null, it will close the app with error code.
+ *                      2) if the index is out of bounds, it will close the app with error code.
+ *                      3) if the @pdfObjVal.ele is Null and the @pdfObjVal.type is not PDFNULL, it will close the app with error code. 
+ * 
+ * Notes: 
+ *                      1) this function does not only set the new element at the specified position but also it free the old element
+ *                         using the correct freeing function unless ofcourse it's a PdfNull object no need to free anything.
  */
 void pdfArrayAtSet(PdfArray* pdfArray, int32_t index, PdfObjVal pdfObjVal);
 
-
-
 /**
- * this function is used to get the value of the element with the given string as a key if not presetn it fails.
- * @pdfDictionary       this is the dictionary to be considered when searching.
- * @NT_str              the null terminated string to be used as the key.
- * @return              return a PdfObjVal strucutre object holding the address and the type of the found element as members.
-*/
-
+ * Purpose:             to make it more like a normal associative array, a.k.a. dictionary, the this function is used as
+ *                      the subscription operator for the PdfDictionary type.
+ * @pdfDictionary            the pdfDictionary or associative array to be queried.
+ * @NT_str              the key of the value requested.
+ * @return              the PdfObjVal that holds the pointer to the value element and the type, both as memebers.
+ * 
+ * Failure senarios:    
+ *                      1) if the given dictionary is null it will close the app with the correct error code.
+ *                      2) if the given Null terminated string length is zero or the NT_str itself is NULL
+ *                         it will close the application with the correct error code.
+ *                      3) if the NT_str is not found, that is it don't have a PdfName with the same value int the keys array,
+ *                         it will close the app with the correct error code.
+ *                      
+ * Notes:               1) if the PdfName (NT_str) in question has a null as an element it will return 
+ *                         Null as the Pointer to the element and PDFNULL as the type.
+ *                      2) this function return the address of the element as a memeber to PdfObjVal so don't free it,
+ *                         or it will put this structure in an invalid state.
+ */
 PdfObjVal pdfDictionaryGet(PdfDictionary* pdfDictionary, const char* NT_str);
 
 /**
- * this function is used to set the value of the element with the given string as a key if not presetn it fails.
- * @pdfDictionary       this is the dictionary to be considered when searching and setting.
- * @NT_str              the null terminated string to be used as the key.
- * @pdfObjVal           this object holds the address and type of the object pointed by the address to be set in place of the old one.
- * NOTE:
- *                      the old element is freed and the new one set to be freed when the whole strucutre is freed.
-*/
+ * Purpose:             to make it more like a normal associative array the this function is used as the subscription operator 
+ *                      for the PdfArray type.
+ *
+ * @pdfDictionary       the pdfDictionary/associative array to be queried.
+ * @NT_str              the key of the value requested.
+ * @pdfObjVal           the element and the type to store at the specified index as requested.
+ * 
+ * Failure Senarios:    
+ *                      1) if the given @pdfDictionary is null, it will close the app with error code.
+ *                      2) if the given Null terminated string length is zero or the NT_str itself is NULL
+ *                         it will close the application with the correct error code.
+ *                      3) if the @pdfObjVal.ele is Null and the @pdfObjVal.type is not PDFNULL, it will close the app with error code. 
+ *                         because @pdfObjVal is invalid.
+ * 
+ * Notes: 
+ *                      1) this function does not only set the new element at the specified position but also it free the old element
+ *                         using the correct freeing function unless ofcourse it's a PdfNull object no need to free anything.
+ */
 void pdfDictionarySet(PdfDictionary* pdfDictionary, const char* NT_str, PdfObjVal pdfObjVal);
 /*
- * thie funcion is used to get the value of the stream at the specified index.
+ * Purpose:             check if the given pdfDictionary has the key or not return the index of the key if it has it.
+ *
+ * @pdfDicitonary       the pdfDictionary in question.
+ * @NT_str              Null termainted string representation of the key in question.
+ * @return              index of the key if found, or else -1.
+ *
+ * Failure Senarios:    
+ *                      1) if the given @pdfDictionary is null, it will close the app with error code.
+ *                      2) if the given Null terminated string length is zero or the NT_str itself is NULL
+ *                         it will close the application with the correct error code.
+ * */
+uint8_t pdfDictionaryHasKey(PdfDictionary* pdfDictionary, const char* NT_str);
+
+/*
+ * Purpose:             get the value of the pdfStream at the specified index.
+ *
  * @pdfStream           is the stream to use as the inquestion search place.
  * @index               is the index of the byte of interest.
  * @return              the value at the specified index.
+ *
+ * Failure Senarios:    
+ *                      1) if the given pdfStream  is null it will close the app with the correct error code.
+ *                      2) if the given index is larger than the len of the stream it will close the app with 
+ *                         correct error code.
  */
 uint8_t  pdfStreamGet(PdfStream* pdfStream, int index);
 /*
- * thie funcion is used to set the value of the stream at the specified index.
+ * Purpose:             set the pdfStream to the given value at the specified index.
+ *
  * @pdfStream           is the stream to use as the inquestion search place.
  * @index               is the index of the byte of interest.
- * @value             the value at the to be inserted specified index.
+ * @value               the value at the to be inserted specified index.
+ * Failure Senarios:    
+ *                      1) if the given pdfStream  is null it will close the app with the correct error code.
+ *                      2) if the given index is larger than the len of the stream it will close the app with 
+ *                         correct error code.
  */
 void pdfStreamSet(PdfStream* pdfStream, int index, uint8_t value);
 
 /**
- * this function is a wrapper that calles the correct freeing function given the type of the element pointed by ele.
- * @ele                 ele to be freed from memory.
- * @pdfValueType        this is the type of the element pointed by ele. 
+ * Purpose:             free the pdfValue object pointed by the @ptr
+ * @ptr                 pointer to the pdf object to be freed.
+ * @pdfValueType        this is the type of the element pointed by ptr. 
+ *
  * NOTE:
- *                      if ele is null noting happen.
+ *                      1) If ele is null noting happen.
  */
-void freePdfValue(void* ele, enum PDFVALUETYPE pdfValueType);
+void freePdfValue(void* ptr, enum PDFVALUETYPE pdfValueType);

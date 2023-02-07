@@ -48,6 +48,13 @@
     fprintf(stderr, "Index is out of range: index=%d, size=%d", index, size);\
     exit(-1);\
 }
+
+#define FAIL_IF_NEGATIVE(arg, err_msg)\
+    if(arg < 0)\
+{\
+    fprintf(stderr, err_msg);\
+    exit(-1);\
+}
 #endif
 
 

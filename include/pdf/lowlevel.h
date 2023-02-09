@@ -5,8 +5,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-enum {PDF_FALSE = 0,PDF_TRUE};
-
 enum PDFVALUETYPE {
     PDFSTRING,
     PDFNAME,
@@ -29,7 +27,7 @@ enum PDFVALUETYPE {
 typedef struct {
     const void * const ptr;         //const pointer to const void.
     enum PDFVALUETYPE type;
-} PdfObjVal;
+} PdfValObj;
 
 /**
  * this structure is used to represent integer values in pdf file. 
@@ -54,8 +52,6 @@ typedef struct {
 typedef struct {
     uint8_t value;
 } PdfBoolean;
-
-
 /**
  * this structure store the string characters as null termainted string.
  * @NT_str          the null termainated array of characters.
@@ -122,8 +118,16 @@ typedef struct
 typedef struct
 {
     uint64_t generationNumber;
-    uint64_t id;
-}PdfRef;
+    uint64_t objectNumber;
+} PdfRef;
+
+typedef struct
+{
+    uint64_t generationNumber;          // generation number of the indirect number.
+    uint64_t objectNumber;              // the object number of the indirect number.
+    void*    pdfValuePtr;              // pointer to the pdf object.
+    int32_t  pdfValueType;              // the object type pointed by the pointer pdfValue.
+} PdfIndirectObject;
 
 /**
  * Purpose:     make a new PdfName object on the heap and initialize it by copying.
@@ -206,13 +210,14 @@ void freePdfStream(PdfStream* pdfStream);
  * 
  * Failure senarios:    
  *                      1) if the given array is null it will close the app.
- *                      2) if the index is out of bounds is will close the app.
+ *                      2) if the index is negative will close the app.
  *                      
  * Notes:               1) if the index in question has a null as an element it will return 
  *                         Null as the Pointer to the element and PDFNULL as the type regardless of the value of pdfArray->values_types[index]
  *                      2) this function return the address of the element as a memeber to PdfObjVal so don't free it.
+ *                      3) this function will return NULL pdfObjVal if the index is larger than the size without actual resizing.
  */
-PdfObjVal pdfArrayAtGet(PdfArray* pdfArray, int32_t index);
+PdfValObj pdfArrayAtGet(PdfArray* pdfArray, int32_t index);
 
 /**
  * Purpose:             to make it more like a normal array the this function is used as the subscription operator 
@@ -224,19 +229,22 @@ PdfObjVal pdfArrayAtGet(PdfArray* pdfArray, int32_t index);
  * 
  * Failure Senarios:    
  *                      1) if the given array is null, it will close the app with error code.
- *                      2) if the index is out of bounds, it will close the app with error code.
- *                      3) if the @pdfObjVal.ele is Null and the @pdfObjVal.type is not PDFNULL, it will close the app with error code. 
+ *                      2) if the index is negative, it will close the app with error code.
+ *                      3) if the @pdfObjVal.ele is Null and the @pdfObjVal.type is not PDFNULL,
+ *                         or @pdfObjVal.type is PDFNULL and @pdfObjVal.ptr is not NULL it will close the app with error code. 
  * 
  * Notes: 
  *                      1) this function does not only set the new element at the specified position but also it free the old element
  *                         using the correct freeing function unless ofcourse it's a PdfNull object no need to free anything.
+ *                      2) this function will keep extending the size of the underlying arrays if the index is larger than the current size.
+ *
  */
-void pdfArrayAtSet(PdfArray* pdfArray, int32_t index, PdfObjVal pdfObjVal);
+void pdfArrayAtSet(PdfArray* pdfArray, int32_t index, PdfValObj pdfObjVal);
 
 /**
  * Purpose:             to make it more like a normal associative array, a.k.a. dictionary, the this function is used as
  *                      the subscription operator for the PdfDictionary type.
- * @pdfDictionary            the pdfDictionary or associative array to be queried.
+ * @pdfDictionary       the pdfDictionary or associative array to be queried.
  * @NT_str              the key of the value requested.
  * @return              the PdfObjVal that holds the pointer to the value element and the type, both as memebers.
  * 
@@ -244,15 +252,16 @@ void pdfArrayAtSet(PdfArray* pdfArray, int32_t index, PdfObjVal pdfObjVal);
  *                      1) if the given dictionary is null it will close the app with the correct error code.
  *                      2) if the given Null terminated string length is zero or the NT_str itself is NULL
  *                         it will close the application with the correct error code.
- *                      3) if the NT_str is not found, that is it don't have a PdfName with the same value int the keys array,
- *                         it will close the app with the correct error code.
  *                      
  * Notes:               1) if the PdfName (NT_str) in question has a null as an element it will return 
  *                         Null as the Pointer to the element and PDFNULL as the type.
  *                      2) this function return the address of the element as a memeber to PdfObjVal so don't free it,
  *                         or it will put this structure in an invalid state.
+ *                      3) if the NT_str is not found, that is it don't have a PdfName with the same value in the keys array,
+ *                         it will always return PDFNULL as a type and null as a pointer.
+ *                         this actually what the standard state about abscence of keys.
  */
-PdfObjVal pdfDictionaryGet(PdfDictionary* pdfDictionary, const char* NT_str);
+PdfValObj pdfDictionaryGet(PdfDictionary* pdfDictionary, const char* NT_str);
 
 /**
  * Purpose:             to make it more like a normal associative array the this function is used as the subscription operator 
@@ -266,27 +275,17 @@ PdfObjVal pdfDictionaryGet(PdfDictionary* pdfDictionary, const char* NT_str);
  *                      1) if the given @pdfDictionary is null, it will close the app with error code.
  *                      2) if the given Null terminated string length is zero or the NT_str itself is NULL
  *                         it will close the application with the correct error code.
- *                      3) if the @pdfObjVal.ele is Null and the @pdfObjVal.type is not PDFNULL, it will close the app with error code. 
- *                         because @pdfObjVal is invalid.
+ *                      3) if the @pdfObjVal.ele is Null and the @pdfObjVal.type is not PDFNULL,
+ *                         or @pdfObjVal.type is PDFNULL and @pdfObjVal.ptr is not NULL it will close the app with error code. 
  * 
  * Notes: 
  *                      1) this function does not only set the new element at the specified position but also it free the old element
  *                         using the correct freeing function unless ofcourse it's a PdfNull object no need to free anything.
+ *                      2) if the dictionary does not have an element with the NT_str key it will set one in the last open key/value pair in the array.
+ *                         if there is not suce place it will double the size of the underlying arrays and assign the new given object the first
+ *                         open position.
  */
-void pdfDictionarySet(PdfDictionary* pdfDictionary, const char* NT_str, PdfObjVal pdfObjVal);
-/*
- * Purpose:             check if the given pdfDictionary has the key or not return the index of the key if it has it.
- *
- * @pdfDicitonary       the pdfDictionary in question.
- * @NT_str              Null termainted string representation of the key in question.
- * @return              index of the key if found, or else -1.
- *
- * Failure Senarios:    
- *                      1) if the given @pdfDictionary is null, it will close the app with error code.
- *                      2) if the given Null terminated string length is zero or the NT_str itself is NULL
- *                         it will close the application with the correct error code.
- * */
-uint8_t pdfDictionaryHasKey(PdfDictionary* pdfDictionary, const char* NT_str);
+void pdfDictionarySet(PdfDictionary* pdfDictionary, const char* NT_str, PdfValObj pdfObjVal);
 
 /*
  * Purpose:             get the value of the pdfStream at the specified index.
@@ -309,8 +308,12 @@ uint8_t  pdfStreamGet(PdfStream* pdfStream, int index);
  * @value               the value at the to be inserted specified index.
  * Failure Senarios:    
  *                      1) if the given pdfStream  is null it will close the app with the correct error code.
- *                      2) if the given index is larger than the len of the stream it will close the app with 
+ *                      2) if the given index is negative, it will close the app with 
  *                         correct error code.
+ *
+ * Notes:               1) if the given index is larger than the stream len it will keep resizing,
+ *                         the stream until index is less than the stream length, then set the @index position with
+ *                         @value 
  */
 void pdfStreamSet(PdfStream* pdfStream, int index, uint8_t value);
 
@@ -324,5 +327,21 @@ void pdfStreamSet(PdfStream* pdfStream, int index, uint8_t value);
  */
 void freePdfValue(void* ptr, enum PDFVALUETYPE pdfValueType);
 
+/**
+ * Purpose:             create a new pdf reference  object with the given object id 
+ *                      "Note object id is the pair generation number and other object number"
+ * generationNumber     the referenced object generationNumber
+ */
+
 PdfRef* makePdfRef(uint64_t generationNumber, uint64_t id);
+
+/**
+ * Purpose:             this function is used to create an pdf indirect object 
+ *
+ * @generationNumber    the generation number of the object.
+ * @objectNumber        the object number of the object.
+ * @pdfVal              pointer to the pdfValue object.
+ * @objectType          the type of the pdf object.
+ */
+PdfIndirectObject* makePdfIndirectObject(uint64_t generationNumber, uint64_t objectNumber, void* pdfValue_ptr, int32_t pdfValueType);
 #endif

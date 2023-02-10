@@ -3,81 +3,60 @@
 #include "pdf/lowlevel.h"
 
 
-/*
- * this structure represent pdf indirect object.
- * @objectNumber             is the object number.
- * @generationNumber         is the genreation number of the object most of the time 0.
- * @ptr                      is a pointer to the actual value of the indirect object.
- * @type                     is the type of the actual value pointed by the indirect object.
- * */
+
+enum NumberPoolWithDrawalMode { FREEDFIRST, UNUSEDFIRST};
+// pdf file is a list of indirect objects. each object has a unique object id.
+// so we need to implement a certain type of pool of integers for the object numbers to have.
+typedef struct
+{
+  uint32_t   nextToUse;                     // hold the next value to use.
+  uint32_t** freedList;                      // holds the list of pointer to free number after being used.
+  uint32_t   freedListSize;                 // the maximum number of free numbers that the number pool can have as a whole.
+  uint8_t satuarated;                       // 0 mean that the unused list still have elements to offer.
+                                            // 1 means that the unused list is fully consumed.
+                                            // 2 means that the unused list is fully consumed and 
+                                            //   freed list is fully consumed.
+} Number32Pool;
+
 typedef struct {
-    uint32_t objectNumber;
-    uint32_t generationNumber;
-    void* value;
-    enum PDFVALUETYPE type;
-} PdfInObj;
+  Number32Pool* number32Pool;
+  PdfIndirectObject** pdfIndirectObjectsList;
+} PdfFile;
+
 
 /**
- * each pdf file content can be interpreted as a list of indirect objects.
- * @indirect_objects_list           array of pointers to indirect pdf objects.
- * @currentCapacity                current Capacity of the PdfFileContent, or how many indirect object it can have.
+ * Purpose:                 create a new number pool. 
+ *
+ * @initialFreeListSize     the size of the freelist before any freeing.
 */
-typedef struct {
-   PdfInObj** inObjarr;
-   uint32_t currentCapacity;
-} PdfFileContent;
-/**
- * Purpose: allocate space for the PdfFileContent on the heap and allocate space for the underlying
- *          array of pointers with the initialCapacity as currnet capacity.
- * @initialCapacity         the current maximum number of indirect object this file can hold without expanding.
- * @return                  pointer to the newly created logical file.
- *
- * Failure Senarios:
- *                  1) this function will exit the application if the given capacity is negative or zero.
- *                  2) this funciton will exit if the application failed to allocate memory for the object or
- *                      the underlying arrya of pointers.
- */
-PdfFileContent* makePdfFileContent(int32_t initialCapacity);
+Number32Pool* makeNumber32Pool(uint32_t initialFreeListSize);
+/*
+ * Purpose:                 used to free the whole Number32Pool strucutre and the underlying
+ *                          array of pointers and the pointed to numbers by those pointers.
+ * @number32Pool            pointer to the number32Pool strucutre itself.
+ * */
+void freeNumber32Pool(Number32Pool* number32Pool);
 
 /**
- * Purpose: get the Pdf indirect object pointer at the specified index from the list or return Null if index is upbove 
- *          current capacity.
- * @pdfFileContent:         the logical file in question.          
- * @index:                  the index in question. 
- * @return:                 indirect object pointer.
+ * Purpose:                get the next number to use from a certain Number32Pool.
  *
- * Failure Senarios:        
- *                      1) if the index is negative it will fail and close the application.
- *                      2) if the given logical file is null, it will fail and close the application.
- * Notes:
- *                      1) if the index is out of the range it will return Null without extending the pdffilecontent.
+ * @number32Pool            the number pool to perform the operation on.
+ * @mode                    determine the source of the number is it the unused list,
+ *                          or the freed list if possible.
+ * @return                  the number to use.
  */
-PdfInObj* PdfFileContentAtGet(PdfFileContent* pdfFileContent, int32_t index);
+
+uint32_t Number32PoolGetNext(Number32Pool* number32Pool,enum NumberPoolWithDrawalMode mode);      
 
 /**
- * Purpose: set the Pdf indirect object pointer at the specified index by the given value 
+ * Purpose:                 free a certain number from a number pool.
+ * @number32Pool            the number pool to perform the operation on.
+ * @value                   the value to free.
  *
  *
- * @pdfFileContent          pointer to the logical file in question.
- * @index                   the index we want to set.
- * @pdf_Indirect_Obj        the new object that should be in place.
- *
- * Failure Senarios:    
- *                      1) if the index is negative it will fail and close the application.
- *                      2) if the given logical file is null, it will fail and close the application.
- * Notes:               
- *                      1) if the index is out of range it will extend the file till the index is less than the current cap.
- *                      2) the old indirect object pointed by the pointer at the index is freed.
+ * Note:
+ *                          1) if the number is already freed nothing happens.
  */
-void PdfFileContentAtSet(PdfFileContent* pdfFileContent, int32_t index, PdfInObj* pdf_Indirect_Obj);
-
-
-/**
- * free the given object and the underlying pdf value"@ptr.value" in question.
- * @ptr         pointer to the element to free.
- * Notes:       
- *              1) if ptr is null nothing happens.
- */
-void freePdfInObj(PdfInObj* ptr);
+void Number32PoolFreeNumber(Number32Pool* number32Pool, uint32_t valueToFree); // function used to free the number @valueToFree.
 
 #endif

@@ -1,6 +1,7 @@
 #ifndef HIGHLEVEL_H
 #define HIGHLEVEL_H
 #include "pdf/lowlevel.h"
+#include <wchar.h>
 
 
 
@@ -19,11 +20,15 @@ typedef struct
 } Number32Pool;
 
 typedef struct {
-  Number32Pool* number32Pool;
-  PdfIndirectObject** pdfIndirectObjectsList;
+  Number32Pool* number32Pool;                     // the number pool to use when constructing the file's indirect objects.
+  PdfIndirectObject** pdfIndirectObjectsList;     // array of pointers to indirect pdf objects.
+  uint32_t currentCapacity, nextEmpty;                                  // this is the current number of possible indirect object the file can hold.
 } PdfFile;
 
-
+typedef struct {
+  uint64_t objectNumber;
+  uint64_t generationNumber;                   // most of the time if not always zero.
+}PdfObjectId;
 /**
  * Purpose:                 create a new number pool. 
  *
@@ -36,6 +41,8 @@ Number32Pool* makeNumber32Pool(uint32_t initialFreeListSize);
  * @number32Pool            pointer to the number32Pool strucutre itself.
  * */
 void freeNumber32Pool(Number32Pool* number32Pool);
+
+
 
 /**
  * Purpose:                get the next number to use from a certain Number32Pool.
@@ -58,5 +65,28 @@ uint32_t Number32PoolGetNext(Number32Pool* number32Pool,enum NumberPoolWithDrawa
  *                          1) if the number is already freed nothing happens.
  */
 void Number32PoolFreeNumber(Number32Pool* number32Pool, uint32_t valueToFree); // function used to free the number @valueToFree.
+
+/**
+ * Purpose:                 this function is used to make a new pdf file object with the given number32Pool
+ *
+ * @size                    the intial number of indirect object this file object can have.
+ */
+PdfFile* makePdfFile(uint32_t size);
+
+
+/*
+ * Purpose                  this function is used to free a PdfFile object with all the underlying indirect object.
+ * @pdfFile                 Pointer to the object to free can be null.
+ */
+void freePdfFile(PdfFile* pdfFile);
+
+/**
+ * Purpose:                 this function is used to append indirect ojbect to the list of pointer of a pdf file and 
+ *                          double the length of the list if necessary.
+ * @PdfFile                 pointer to the PdfFile object to append to.
+ * @pdfValuePtr             pointer to the value to be appended.
+ * @pdfValueType            the type of value to be recoreded in the encasulating PdfIndirectObject
+ */
+uint64_t appendPdfValueToList(PdfFile *pdfFile, void* pdfValuePtr, enum PDF_VALUE_TYPE pdfValueType);
 
 #endif

@@ -5,18 +5,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-enum PDFVALUETYPE {
-    PDFSTRING,
-    PDFNAME,
-    PDFARRAY,
-    PDFSTREAM,
-    PDFDICTIONARY,
-    PDFREAL,
-    PDFNUMBER,
-    PDFBOOLEAN,
-    PDFREF,
-    PDFNULL,
-
+enum PDF_VALUE_TYPE {
+    PDF_NULL = 0,
+    PDF_STRING,
+    PDF_NAME,
+    PDF_ARRAY,
+    PDF_STREAM,
+    PDF_DICTIONARY,
+    PDF_REAL,
+    PDF_NUMBER,
+    PDF_BOOLEAN,
+    PDF_REF
 };
 
 /**
@@ -26,7 +25,7 @@ enum PDFVALUETYPE {
  */
 typedef struct {
     const void * const ptr;         //const pointer to const void.
-    enum PDFVALUETYPE type;
+    enum PDF_VALUE_TYPE type;
 } PdfValObj;
 
 /**
@@ -79,7 +78,7 @@ typedef struct {
 typedef struct {
     void** arr;
     int32_t size;
-    int32_t* values_types;
+    enum PDF_VALUE_TYPE* values_types;
 } PdfArray;
 
 typedef struct {
@@ -95,7 +94,7 @@ typedef struct {
     PdfName** keys;
     void** values;
     int32_t size;
-    int* values_types;
+    enum PDF_VALUE_TYPE* values_types;
 } PdfDictionary;
 
 /**
@@ -126,7 +125,7 @@ typedef struct
     uint64_t generationNumber;          // generation number of the indirect number.
     uint64_t objectNumber;              // the object number of the indirect number.
     void*    pdfValuePtr;              // pointer to the pdf object.
-    int32_t  pdfValueType;              // the object type pointed by the pointer pdfValue.
+    enum PDF_VALUE_TYPE  pdfValueType;              // the object type pointed by the pointer pdfValue.
 } PdfIndirectObject;
 
 /**
@@ -318,14 +317,25 @@ uint8_t  pdfStreamGet(PdfStream* pdfStream, int index);
 void pdfStreamSet(PdfStream* pdfStream, int index, uint8_t value);
 
 /**
- * Purpose:             free the pdfValue object pointed by the @ptr
- * @ptr                 pointer to the pdf object to be freed.
- * @pdfValueType        this is the type of the element pointed by ptr. 
- *
- * NOTE:
- *                      1) If ele is null noting happen.
+ * Purpose              used to make a pdfnumber object on the heap with the provieded value.
+ * @value               the value of the number.
+ * @return              pointer to the created object.
  */
-void freePdfValue(void* ptr, enum PDFVALUETYPE pdfValueType);
+PdfNumber* makePdfNumber(int64_t value);
+
+/**
+ * Purpose              used to make a pdfRean object on the heap with the provieded value.
+ * @value               the value of the Real Number.
+ * @return              pointer to the created object.
+ */
+PdfReal* makePdfReal(double value);
+
+/**
+ * Purpose              used to make a pdfBoolean object on the heap with the provieded value.
+ * @value               the value of the boolean.
+ * @return              pointer to the created object.
+ */
+PdfBoolean* makePdfBoolean(uint8_t value);
 
 /**
  * Purpose:             create a new pdf reference  object with the given object id 
@@ -343,5 +353,20 @@ PdfRef* makePdfRef(uint64_t generationNumber, uint64_t id);
  * @pdfVal              pointer to the pdfValue object.
  * @objectType          the type of the pdf object.
  */
-PdfIndirectObject* makePdfIndirectObject(uint64_t generationNumber, uint64_t objectNumber, void* pdfValue_ptr, int32_t pdfValueType);
+PdfIndirectObject* makePdfIndirectObject(uint64_t generationNumber, uint64_t objectNumber, void* pdfValue_ptr, enum PDF_VALUE_TYPE pdfValueType);
+/**
+ * Purpose:             this function is used to free the space occupied by the indirect object and PdfIndirectObject.
+ * @pdfIndirectObject   pointer to the PdfIndirectObject object to free with the underlying pdfValue.
+ */
+void freePdfInDirectObject(PdfIndirectObject* pdfIndirectObject);
+
+/**
+ * Purpose:             free the pdfValue object pointed by the @ptr
+ * @ptr                 pointer to the pdf object to be freed.
+ * @pdfValueType        this is the type of the element pointed by ptr. 
+ *
+ * NOTE:
+ *                      1) If ele is null noting happen.
+ */
+void freePdfValue(void* ptr, enum PDF_VALUE_TYPE pdfValueType);
 #endif

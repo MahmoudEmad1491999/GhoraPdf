@@ -13,7 +13,7 @@ Number32Pool* makeNumber32Pool(uint32_t initialFreeListSize)
   number32Pool->nextToUse = 0;
   number32Pool->satuarated = 0;
 
-  number32Pool->freedList = (uint32_t**) malloc(sizeof(uint32_t*) * initialFreeListSize);
+  number32Pool->freedList = (uint32_t**) calloc(initialFreeListSize, sizeof(uint32_t*));
   FAIL_IF_NULL(number32Pool->freedList, "Failed to allocate space for the freed list.\n");
   
   number32Pool->freedListSize = initialFreeListSize;
@@ -28,7 +28,7 @@ void freeNumber32Pool(Number32Pool* number32Pool)
     // first: loop the whole space allocated for pointer to freed number and free the pointed to spaces.
     for(int index = 0; index < number32Pool->freedListSize; index++)
     {
-      if(number32Pool->freedList[index] != NULL)
+      if(NULL != number32Pool->freedList[index])
       {
         free(number32Pool->freedList[index]);
       }
@@ -87,7 +87,7 @@ uint32_t Number32PoolGetNext(Number32Pool *number32Pool, enum NumberPoolWithDraw
       uint32_t valueToReturn;
       for(uint32_t index = 0; index < number32Pool->freedListSize; index++)
       {
-        if(number32Pool->freedList[index] != NULL)
+        if(NULL != number32Pool->freedList[index])
         {
           // record the value pointed by the pointer.
           valueToReturn = * (number32Pool->freedList[index]);
@@ -116,7 +116,7 @@ uint32_t Number32PoolGetNext(Number32Pool *number32Pool, enum NumberPoolWithDraw
       }
   }
   else {
-    FAIL_WITH_MESSAGE("dangling else branch.\n");
+    FAIL_WITH_MESSAGE("THIS PART OF THE CODE SHOULD NOT BE REACHED AT ALL.");
   }
 }
 
@@ -124,21 +124,18 @@ uint32_t Number32PoolGetNext(Number32Pool *number32Pool, enum NumberPoolWithDraw
 
 void NUmber32PoolFreeNumber(Number32Pool* number32Pool, uint32_t valueToFree)
 {
-  // check if the given number32Pool is null.
   FAIL_IF_NULL(number32Pool, "The given pointer is null.\n");
   
-  // this vairable is used to record the last free position in the array of pointers.
   int32_t last_free_position = -1;
   
   // check if the given element is already freed.
   for(uint32_t index = 0; index < number32Pool->freedListSize; index++)
   {
-    if(number32Pool->freedList[index] != NULL)
+    if(NULL != number32Pool->freedList[index])
     {
       if(*(number32Pool->freedList[index]) == valueToFree)
       {
-        fprintf(stdout, "the number \"%d\" is already freed", valueToFree);
-        return;
+        FAIL_WITH_MESSAGE("the number is already freed");
       }
     }else {
       last_free_position = index;
@@ -173,5 +170,90 @@ void NUmber32PoolFreeNumber(Number32Pool* number32Pool, uint32_t valueToFree)
     number32Pool->freedListSize *= 2;
   }
 }
+
+PdfFile* makePdfFile(uint32_t initialCapacity)
+{
+  FAIL_IF_ZERO(initialCapacity, "Size of any thing cannot be zero.\n");
+
+  PdfFile* pdfFile = malloc(sizeof(PdfFile));
+
+  // create a new number pool with a freed list of 50 numbers.
+  // i know bad design choice is to hard code it but fuck it.
+  pdfFile->number32Pool = makeNumber32Pool(50);
+  // set the static members of the pdf file, i.e. capacity, next free spot.
+  pdfFile->currentCapacity = initialCapacity;
+  pdfFile->nextEmpty = 0;
+
+  // allocate zeroed out space for the list of pointers to the indirect objects.
+  pdfFile->pdfIndirectObjectsList = calloc(initialCapacity, sizeof(PdfIndirectObject*));
+  FAIL_IF_NULL(pdfFile->pdfIndirectObjectsList, "Failed to allocate memory for the list of pointers.\n");
+
+  return pdfFile;
+}
+
+void freePdfFile(PdfFile *pdfFile) {
+  if (NULL != pdfFile) {
+    // first free the number pool.
+    freeNumber32Pool(pdfFile->number32Pool);
+    for(int index = 0; index < pdfFile->currentCapacity;index++)
+    {
+      // free each and every indirect object using the freeing function.
+      freePdfInDirectObject(pdfFile->pdfIndirectObjectsList[index]);
+    }
+    // free the list of pointers used to store the refreneces to the actual PdfIndirectObject objects.
+    free(pdfFile->pdfIndirectObjectsList);
+    // free the pdf file structure.
+    free(pdfFile);
+  }
+}
+
+uint64_t appendPdfValueToList(PdfFile *pdfFile, void* pdfValuePtr, enum PDF_VALUE_TYPE pdfValueType)
+{
+  FAIL_IF_NULL(pdfFile, "Cannot Append To A NULL PdfFile.\n");
+  
+  // check if the underlying list is full or not through the next available spot.
+  if (pdfFile->nextEmpty < pdfFile->currentCapacity) {
+    // there is still space.
+    pdfFile->pdfIndirectObjectsList[pdfFile->nextEmpty] = makePdfIndirectObject(0, Number32PoolGetNext(pdfFile->number32Pool, UNUSEDFIRST), pdfValuePtr, pdfValueType);
+    // increment the next spot indicator.
+    pdfFile->nextEmpty++;
+    return pdfFile->pdfIndirectObjectsList[pdfFile->nextEmpty - 1]->objectNumber;
+  } else {
+    // the list is out of space.
+    pdfFile->pdfIndirectObjectsList = realloc(pdfFile->pdfIndirectObjectsList, pdfFile->currentCapacity * sizeof(PdfIndirectObject *) * 2);
+    FAIL_IF_NULL(pdfFile->pdfIndirectObjectsList, "Resizing failed for the list of indirect objects.\n");
+    
+    // update the capacity.
+    pdfFile->currentCapacity *= 2;
+
+    pdfFile->pdfIndirectObjectsList[pdfFile->nextEmpty] = makePdfIndirectObject(0, Number32PoolGetNext(pdfFile->number32Pool, UNUSEDFIRST), pdfValuePtr, pdfValueType);
+    // increment the next spot indicator.
+    pdfFile->nextEmpty++;
+    pdfFile->nextEmpty++;
+    return pdfFile->pdfIndirectObjectsList[pdfFile->nextEmpty - 1]->objectNumber;
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

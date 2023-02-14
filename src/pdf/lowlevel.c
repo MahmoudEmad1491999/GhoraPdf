@@ -100,7 +100,7 @@ void freePdfArray(PdfArray *pdfArray) {
   }
 }
 
-PdfValObj pdfArrayAtGet(PdfArray *pdfArray, int index) {
+PdfValue pdfArrayAtGet(PdfArray *pdfArray, int index) {
   FAIL_IF_NULL(pdfArray, "Given array pointer is null.\n");
 
   FAIL_IF_NEGATIVE(index, "Index is less than zero.\n");
@@ -109,16 +109,16 @@ PdfValObj pdfArrayAtGet(PdfArray *pdfArray, int index) {
   if (index < pdfArray->size) {
     // if at the specified index there is not element return null pointer and PDFNULL.
     if (pdfArray->arr[index] == NULL || pdfArray->values_types[index] == PDF_NULL) {
-      return (PdfValObj){.ptr = NULL, .type = PDF_NULL};
+      return (PdfValue){.ptr = NULL, .type = PDF_NULL};
     } else {
-      return (PdfValObj){.ptr = pdfArray->arr[index], .type = pdfArray->values_types[index]};
+      return (PdfValue){.ptr = pdfArray->arr[index], .type = pdfArray->values_types[index]};
     }
   } else { // not withing range always return null without extending the underlying arrays.
-    return (PdfValObj){.ptr = NULL, .type = PDF_NULL};
+    return (PdfValue){.ptr = NULL, .type = PDF_NULL};
   }
 }
 
-void pdfArrayAtSet(PdfArray *pdfArray, int index, PdfValObj pdfObjVal) {
+void pdfArrayAtSet(PdfArray *pdfArray, int index, PdfValue pdfObjVal) {
   FAIL_IF_NULL(pdfArray, "Given array pointer is null.\n");
 
   FAIL_IF_NEGATIVE(index, "Index is less than zero.\n");
@@ -214,7 +214,7 @@ void freePdfDictionary(PdfDictionary *pdfDictionary) {
   }
 }
 
-PdfValObj pdfDictionaryGet(PdfDictionary *pdfDictionary, const char *NT_str) {
+PdfValue pdfDictionaryGet(PdfDictionary *pdfDictionary, const char *NT_str) {
   FAIL_IF_NULL(pdfDictionary, "Given dictionary pointer is null.\n");
   FAIL_IF_NULL(NT_str, "Given String is Null pointer.\n");
   FAIL_IF_STRINT_LEN_ZERO(NT_str, "Cannot search of an element with the key name with zero lenght.\n");
@@ -227,15 +227,15 @@ PdfValObj pdfDictionaryGet(PdfDictionary *pdfDictionary, const char *NT_str) {
       // compare the key of the current index with the given key string.
       if (strcmp(NT_str, pdfDictionary->keys[index]->NT_str) == 0) {
         // if the key sub string matches the given key, return the value.
-        return (PdfValObj){.ptr = pdfDictionary->values[index], .type = pdfDictionary->values_types[index]};
+        return (PdfValue){.ptr = pdfDictionary->values[index], .type = pdfDictionary->values_types[index]};
       }
     }
   }
   // the whole dictionary does not have a key NT-str. so return null.
-  return (PdfValObj){.ptr = NULL, .type = PDF_NULL};
+  return (PdfValue){.ptr = NULL, .type = PDF_NULL};
 }
 
-void pdfDictionarySet(PdfDictionary *pdfDictionary, const char *NT_str, PdfValObj pdfObjVal) {
+void pdfDictionarySet(PdfDictionary *pdfDictionary, const char *NT_str, PdfValue pdfObjVal) {
   FAIL_IF_NULL(pdfDictionary, "Given dictionary pointer is null.\n");
   FAIL_IF_NULL(NT_str, "Given String is Null pointer.\n");
   FAIL_IF_STRINT_LEN_ZERO(NT_str, "Cannot search of an element with the key name with zero lenght.\n");

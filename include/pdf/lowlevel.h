@@ -26,7 +26,7 @@ enum PDF_VALUE_TYPE {
 typedef struct {
     const void * const ptr;         //const pointer to const void.
     enum PDF_VALUE_TYPE type;
-} PdfValObj;
+} PdfValue;
 
 /**
  * this structure is used to represent integer values in pdf file. 
@@ -216,7 +216,7 @@ void freePdfStream(PdfStream* pdfStream);
  *                      2) this function return the address of the element as a memeber to PdfObjVal so don't free it.
  *                      3) this function will return NULL pdfObjVal if the index is larger than the size without actual resizing.
  */
-PdfValObj pdfArrayAtGet(PdfArray* pdfArray, int32_t index);
+PdfValue pdfArrayAtGet(PdfArray* pdfArray, int32_t index);
 
 /**
  * Purpose:             to make it more like a normal array the this function is used as the subscription operator 
@@ -238,7 +238,7 @@ PdfValObj pdfArrayAtGet(PdfArray* pdfArray, int32_t index);
  *                      2) this function will keep extending the size of the underlying arrays if the index is larger than the current size.
  *
  */
-void pdfArrayAtSet(PdfArray* pdfArray, int32_t index, PdfValObj pdfObjVal);
+void pdfArrayAtSet(PdfArray* pdfArray, int32_t index, PdfValue pdfObjVal);
 
 /**
  * Purpose:             to make it more like a normal associative array, a.k.a. dictionary, the this function is used as
@@ -260,7 +260,7 @@ void pdfArrayAtSet(PdfArray* pdfArray, int32_t index, PdfValObj pdfObjVal);
  *                         it will always return PDFNULL as a type and null as a pointer.
  *                         this actually what the standard state about abscence of keys.
  */
-PdfValObj pdfDictionaryGet(PdfDictionary* pdfDictionary, const char* NT_str);
+PdfValue pdfDictionaryGet(PdfDictionary* pdfDictionary, const char* NT_str);
 
 /**
  * Purpose:             to make it more like a normal associative array the this function is used as the subscription operator 
@@ -284,7 +284,7 @@ PdfValObj pdfDictionaryGet(PdfDictionary* pdfDictionary, const char* NT_str);
  *                         if there is not suce place it will double the size of the underlying arrays and assign the new given object the first
  *                         open position.
  */
-void pdfDictionarySet(PdfDictionary* pdfDictionary, const char* NT_str, PdfValObj pdfObjVal);
+void pdfDictionarySet(PdfDictionary* pdfDictionary, const char* NT_str, PdfValue pdfObjVal);
 
 /*
  * Purpose:             get the value of the pdfStream at the specified index.

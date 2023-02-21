@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "pdf/lowlevel.h"
+#include "pdf/lowlevel_api.h"
 #include "pdf/highlevel.h"
 
 int main(int argc, char **argv) {

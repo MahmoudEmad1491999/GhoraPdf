@@ -4,6 +4,8 @@ build/
 .cache/
 # format files.
 .clang-format
+# libraries archives.
+lib/freetype-2.13.0.tar.gz
 # Prerequisites
 *.d
 

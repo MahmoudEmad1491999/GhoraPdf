@@ -247,30 +247,8 @@ void freePdfInDirectObject(PdfIndirectObject* pdfIndirectObject);
  */
 void freePdfValue(void* ptr, enum PDF_VALUE_TYPE pdfValueType);
 
-enum NumberPoolWithDrawalMode { FREEDFIRST, UNUSEDFIRST};
 // pdf file is a list of indirect objects. each object has a unique object id.
 // so we need to implement a certain type of pool of integers for the object numbers to have.
-typedef struct
-{
-  uint32_t   nextToUse;                     // hold the next value to use.
-  uint32_t** freedList;                      // holds the list of pointer to free number after being used.
-  uint32_t   freedListSize;                 // the maximum number of free numbers that the number pool can have as a whole.
-  uint8_t satuarated;                       // 0 mean that the unused list still have elements to offer.
-                                            // 1 means that the unused list is fully consumed.
-                                            // 2 means that the unused list is fully consumed and 
-                                            //   freed list is fully consumed.
-} Number32Pool;
-
-typedef struct {
-  Number32Pool* number32Pool;                     // the number pool to use when constructing the file's indirect objects.
-  PdfIndirectObject** pdfIndirectObjectsList;     // array of pointers to indirect pdf objects.
-  uint32_t currentCapacity, nextEmpty;                                  // this is the current number of possible indirect object the file can hold.
-} PdfFile;
-
-typedef struct {
-  uint64_t objectNumber;
-  uint64_t generationNumber;                   // most of the time if not always zero.
-}PdfObjectId;
 /**
  * Purpose:                 create a new number pool. 
  *

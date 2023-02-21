@@ -59,6 +59,7 @@ typedef struct {
 typedef struct {
     uint8_t value;
 } PdfBoolean;
+
 /**
  * this structure store the string characters as null termainted string.
  * @NT_str          the null termainated array of characters.
@@ -135,4 +136,27 @@ typedef struct
     void*    pdfValuePtr;              // pointer to the pdf object.
     enum PDF_VALUE_TYPE  pdfValueType;              // the object type pointed by the pointer pdfValue.
 } PdfIndirectObject;
+
+typedef struct
+{
+  uint32_t   nextToUse;                     // hold the next value to use.
+  uint32_t** freedList;                      // holds the list of pointer to free number after being used.
+  uint32_t   freedListSize;                 // the maximum number of free numbers that the number pool can have as a whole.
+  uint8_t satuarated;                       // 0 mean that the unused list still have elements to offer.
+                                            // 1 means that the unused list is fully consumed.
+                                            // 2 means that the unused list is fully consumed and 
+                                            //   freed list is fully consumed.
+} Number32Pool;
+
+typedef struct {
+  Number32Pool* number32Pool;                     // the number pool to use when constructing the file's indirect objects.
+  PdfIndirectObject** pdfIndirectObjectsList;     // array of pointers to indirect pdf objects.
+  uint32_t currentCapacity, nextEmpty;                                  // this is the current number of possible indirect object the file can hold.
+} PdfFile;
+
+typedef struct {
+  uint64_t objectNumber;
+  uint64_t generationNumber;                   // most of the time if not always zero.
+}PdfObjectId;
+enum NumberPoolWithDrawalMode { FREEDFIRST, UNUSEDFIRST};
 #endif

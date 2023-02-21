@@ -11,7 +11,7 @@ include_directories(
     )
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib)
+# add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib)
 
 add_executable(Ghora main.c)
 
